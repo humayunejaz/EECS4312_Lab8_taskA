@@ -1,5 +1,7 @@
-## Student Name:
-## Student ID:
+## Student Name: Humayun Ejaz
+## Student ID: 219476837
+
+from __future__ import annotations
 
 """
 Task A: Appointment Timeslot Recommender (Stub)
@@ -117,12 +119,116 @@ def suggest_slots(
     Notes:
         - Suggested slots must fall within working_hours (and candidate_window if provided).
         - Suggested slots must not overlap busy_intervals, considering buffer time.
-        - You are free to choose internal representation; inputs use time-of-day.
-        - See lab handout for required slot granularity (e.g., 5-min/15-min steps), if any.
+        - Internal search is minute-granularity (1-minute increments) unless handout states otherwise.
     """
+    # ---------- input validation ----------
+    if duration <= timedelta(0):
+        raise ValueError("duration must be > 0")
+    if n < 0:
+        raise ValueError("n must be >= 0")
+    if buffer < timedelta(0):
+        raise ValueError("buffer must be >= 0")
+    if working_hours.start >= working_hours.end:
+        raise ValueError("working_hours must satisfy start < end")
+    if candidate_window is not None and candidate_window.start >= candidate_window.end:
+        raise ValueError("candidate_window must satisfy start < end")
 
-    ##################################################################
-    # TODO: Implement as per lab handout requirements and constraints.
-    ##################################################################
-    
-    raise NotImplementedError("suggest_slots has not been implemented yet")
+    if n == 0:
+        return []
+
+    # ---------- helpers ----------
+    def to_dt(t: time) -> datetime:
+        return datetime.combine(day, t)
+
+    def clamp_interval(
+        s: datetime,
+        e: datetime,
+        lo: datetime,
+        hi: datetime
+    ) -> Optional[Tuple[datetime, datetime]]:
+        s2 = max(s, lo)
+        e2 = min(e, hi)
+        if s2 < e2:
+            return (s2, e2)
+        return None
+
+    def merge_intervals(intervals: List[Tuple[datetime, datetime]]) -> List[Tuple[datetime, datetime]]:
+        if not intervals:
+            return []
+        intervals.sort(key=lambda x: x[0])
+        merged: List[Tuple[datetime, datetime]] = [intervals[0]]
+        for s, e in intervals[1:]:
+            ps, pe = merged[-1]
+            # merge if overlapping or touching
+            if s <= pe:
+                merged[-1] = (ps, max(pe, e))
+            else:
+                merged.append((s, e))
+        return merged
+
+    # ---------- compute allowed window ----------
+    work_lo = to_dt(working_hours.start)
+    work_hi = to_dt(working_hours.end)
+
+    allowed_lo, allowed_hi = work_lo, work_hi
+    if candidate_window is not None:
+        cand_lo = to_dt(candidate_window.start)
+        cand_hi = to_dt(candidate_window.end)
+        allowed_lo = max(allowed_lo, cand_lo)
+        allowed_hi = min(allowed_hi, cand_hi)
+
+    if allowed_lo >= allowed_hi:
+        return []
+
+    # ---------- normalize + buffer busy intervals ----------
+    blocked: List[Tuple[datetime, datetime]] = []
+
+    for bi in busy_intervals:
+        # Guard even though invariant says start < end
+        if bi.start >= bi.end:
+            continue
+
+        # Buffer rule: block before + after busy interval (clamped to allowed window)
+        s = to_dt(bi.start) - buffer
+        e = to_dt(bi.end) + buffer
+
+        clamped = clamp_interval(s, e, allowed_lo, allowed_hi)
+        if clamped is not None:
+            blocked.append(clamped)
+
+    blocked = merge_intervals(blocked)
+
+    # ---------- scan for slots ----------
+    results: List[Slot] = []
+    step = timedelta(minutes=1)
+    cursor = allowed_lo
+
+    # If there are no blocked intervals, fill from allowed_lo
+    if not blocked:
+        while cursor + duration <= allowed_hi and len(results) < n:
+            results.append(Slot(start_time=cursor.time()))
+            cursor += step
+        return results
+
+    for b_start, b_end in blocked:
+        # free region is [cursor, b_start)
+        while cursor + duration <= b_start and len(results) < n:
+            results.append(Slot(start_time=cursor.time()))
+            cursor += step
+
+        if len(results) >= n:
+            return results
+
+        # jump cursor past blocked region
+        if cursor < b_end:
+            cursor = b_end
+
+        if cursor >= allowed_hi:
+            return results
+
+    # after last blocked region, free region is [cursor, allowed_hi)
+    while cursor + duration <= allowed_hi and len(results) < n:
+        results.append(Slot(start_time=cursor.time()))
+        cursor += step
+
+    return results
