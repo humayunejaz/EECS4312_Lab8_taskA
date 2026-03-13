@@ -1,0 +1,26 @@
+Prompt 1:
+Summarize the two personas in the lab manual and identify the key user goals, needs, behaviors, and pain points that could influence system behavior for an appointment slot recommender.
+
+Purpose:
+Clarify persona needs and identify which attributes are likely to become system constraints.
+
+Response summary:
+The response identified that Jane values predictable ordering, automatic conflict handling, and concise output, while Mo values deterministic behavior, explicit handling of edge cases, and no silent failures.
+
+Prompt 2:
+Help derive testable system constraints from the two personas for the appointment slot recommender. The constraints should be precise, testable, and linked to persona attributes such as predictable behavior, low information overload, deterministic handling, and explicit edge-case support.
+
+Purpose:
+Brainstorm candidate constraints and verify that they are concrete and testable.
+
+Response summary:
+The response suggested constraints around deterministic chronological ordering, explicit handling of no-availability cases, normalization of overlapping intervals, limiting output to n results, and stable behavior on repeated identical inputs.
+
+Prompt 3:
+Review these candidate constraints and tell me whether each is precise and testable for a scheduling system: deterministic ordering, no overlap with busy intervals, return at most n slots, repeatable output on identical inputs, explicit edge-case handling, and empty list on no availability.
+
+Purpose:
+Check whether the drafted constraints are testable enough for the persona–constraint table.
+
+Response summary:
+The response confirmed that the listed constraints were testable and could be validated through executable tests and acceptance criteria.

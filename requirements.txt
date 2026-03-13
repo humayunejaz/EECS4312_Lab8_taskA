@@ -1,0 +1,136 @@
+1. Problem Understanding
+
+The system is designed to recommend valid appointment slots within a specified working window while respecting scheduling constraints. The function must consider busy intervals, required meeting duration, optional buffer time between events, and an optional candidate window restriction. The system should return a list of valid time slots that satisfy all constraints while remaining deterministic and predictable.
+
+Two personas influence system behavior. Jane represents a busy professional who expects predictable results and automatic conflict resolution with minimal interaction. Mo represents an edge user who requires deterministic outcomes and explicit handling of unusual or boundary scenarios. These personas introduce requirements around stability, deterministic ordering, and reliable edge-case handling.
+
+2. Assumptions
+
+Working hours are valid and satisfy start < end.
+
+Busy intervals contain valid start and end times.
+
+Duration must be greater than zero.
+
+Buffer values must be zero or positive.
+
+Candidate window, if provided, must satisfy start < end.
+
+Busy intervals may be unsorted or overlapping.
+
+Appointment slots are evaluated in minute increments.
+
+3. Functional Requirements
+
+FR1: The system shall accept a scheduling day, working hours, busy intervals, meeting duration, buffer time, and an optional candidate window.
+
+FR2: The system shall generate appointment suggestions within the working hours window.
+
+FR3: The system shall ensure suggested slots do not overlap with busy intervals.
+
+FR4: The system shall enforce the buffer constraint around busy intervals.
+
+FR5: The system shall return no more than n suggested slots.
+
+FR6: The system shall normalize overlapping or unsorted busy intervals before processing.
+
+FR7: The system shall produce deterministic output ordering for identical inputs.
+
+FR8: The system shall return results in chronological order.
+
+FR9: The system shall support candidate window restrictions.
+
+FR10: The system shall safely handle scenarios where no valid slots exist.
+
+4. System Constraints
+
+C1: The system must return appointment suggestions in deterministic chronological order.
+
+C2: The system must reject any slot that overlaps with busy intervals or violates buffer constraints.
+
+C3: The system must return at most n valid slots.
+
+C4: Repeated executions with identical inputs must produce the same ordered slot list.
+
+C5: The system must correctly handle overlapping intervals, adjacent intervals, and small gaps.
+
+C6: When no valid slot exists, the system must return an empty list rather than failing silently.
+
+5. Acceptance Criteria
+
+AC1
+Given valid working hours and no busy intervals
+When the system generates appointment slots
+Then all returned slots must lie within the working window and be ordered chronologically
+Linked Constraint: C1, C2
+
+AC2
+Given overlapping or unsorted busy intervals
+When the system evaluates slot availability
+Then the intervals must be normalized before scheduling
+Linked Constraint: C2, C5
+
+AC3
+Given a busy interval and buffer value
+When the system evaluates available slots
+Then no slot may start or end inside the buffered interval
+Linked Constraint: C2
+
+AC4
+Given identical input parameters
+When the system is executed multiple times
+Then it must return identical ordered slot results
+Linked Constraint: C1, C4
+
+AC5
+Given no valid appointment slot exists
+When the system evaluates the schedule
+Then the system must return an empty list
+Linked Constraint: C6
+
+AC6
+Given a request for n slots
+When more than n valid slots exist
+Then the system must return no more than n results
+Linked Constraint: C3
+
+6. Edge Cases
+
+EC1
+Description: No valid appointment slots exist in the working window
+Linked Constraint: C6
+Acceptance Criteria: AC5
+
+EC2
+Description: Busy intervals are overlapping or unsorted
+Linked Constraint: C5
+Acceptance Criteria: AC2
+
+EC3
+Description: Adjacent busy intervals leave no real free time between them
+Linked Constraint: C5
+Acceptance Criteria: AC2
+
+EC4
+Description: Free gap exists but is smaller than required duration
+Linked Constraint: C5
+Acceptance Criteria: AC2
+
+EC5
+Description: Candidate window excludes otherwise valid slots
+Linked Constraint: C5
+Acceptance Criteria: AC1
+
+EC6
+Description: Identical input is executed repeatedly
+Linked Constraint: C1, C4
+Acceptance Criteria: AC4
+
+7. Traceability
+Constraint	Acceptance Criteria	Test
+C1	        AC1, AC4	 test_deterministic_order
+C2	        AC1, AC3	 test_no_overlap_busy
+C3	        AC6	       test_max_n_slots
+C4	        AC4	       test_repeatable_results
+C5	        AC2	       test_overlapping_intervals
+C6	        AC5	       test_no_slots
